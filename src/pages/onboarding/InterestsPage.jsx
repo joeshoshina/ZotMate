@@ -30,6 +30,7 @@ export default function InterestsPage() {
       schoolEmail: s.schoolEmail,
       schoolYear: s.schoolYear,
       major: s.major,
+      majorId: s.majorId,
       dob: s.dob,
       classes: s.classes,
       iAm: s.iAm,

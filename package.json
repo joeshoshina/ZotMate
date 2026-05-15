@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "npm run start --prefix server",
+    "server:watch": "npm run watch --prefix server",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

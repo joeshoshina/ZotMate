@@ -1,18 +1,32 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboardingStore } from "../../store/useOnboardingStore";
 import ProgressBar from "../../components/common/ProgressBar";
 import OnboardingLayout from "../../components/common/OnboardingLayout";
-import { SCHOOL_YEARS, MAJORS } from "../../data/mockData";
+import { SCHOOL_YEARS } from "../../data/mockData";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import { fetchMajors } from "../../utils/anteaterApi";
+
+/** Anteater sometimes uses different casing; bucket for optgroups. */
+function majorBucket(m) {
+  const d = String(m?.division ?? "").trim().toLowerCase();
+  if (d === "undergraduate") return "undergraduate";
+  if (d === "graduate") return "graduate";
+  return "other";
+}
 
 export default function PersonalInfoPage() {
   useDocumentTitle("Personal info");
   const navigate = useNavigate();
   const TODAY = new Date().toISOString().split("T")[0];
   const MIN_DOB = "1900-01-01";
-  const { firstName, lastName, dob, schoolYear, major, setField } = useOnboardingStore();
+  const { firstName, lastName, dob, schoolYear, majorId, setField } = useOnboardingStore();
   const [errors, setErrors] = useState({});
+  const [majors, setMajors] = useState([]);
+  const [majorsLoading, setMajorsLoading] = useState(true);
+  const [majorsError, setMajorsError] = useState(null);
+  const [majorsReload, setMajorsReload] = useState(0);
+  const majorsReqId = useRef(0);
   const ids = {
     firstName: useId(),
     lastName: useId(),
@@ -21,6 +35,39 @@ export default function PersonalInfoPage() {
     major: useId(),
   };
   const clr = (k) => setErrors((p) => ({ ...p, [k]: "" }));
+
+  useEffect(() => {
+    const reqRef = majorsReqId;
+    const myId = ++reqRef.current;
+    (async () => {
+      setMajorsLoading(true);
+      setMajorsError(null);
+      try {
+        const json = await fetchMajors();
+        if (reqRef.current !== myId) return;
+        if (json?.ok === true && Array.isArray(json.data)) {
+          setMajors(
+            [...json.data].sort((a, b) =>
+              String(a.name).localeCompare(String(b.name), undefined, { sensitivity: "base" }),
+            ),
+          );
+          setMajorsError(null);
+        } else {
+          setMajors([]);
+          setMajorsError(typeof json?.message === "string" ? json.message : "Could not load majors");
+        }
+      } catch (e) {
+        if (reqRef.current !== myId) return;
+        setMajors([]);
+        setMajorsError(e instanceof Error ? e.message : "Network error");
+      } finally {
+        if (reqRef.current === myId) setMajorsLoading(false);
+      }
+    })();
+    return () => {
+      reqRef.current += 1;
+    };
+  }, [majorsReload]);
 
   const validate = () => {
     const e = {};
@@ -33,7 +80,7 @@ export default function PersonalInfoPage() {
       e.dob = "Date of birth cannot be in the future";
     }
     if (!schoolYear) e.schoolYear = "Required";
-    if (!major) e.major = "Required";
+    if (!majorId) e.major = "Required";
     return e;
   };
 
@@ -184,21 +231,69 @@ export default function PersonalInfoPage() {
           </label>
           <select
             id={ids.major}
-            value={major}
+            value={majorId}
+            disabled={majorsLoading || (!majors.length && majorsError)}
             onChange={(e) => {
-              setField("major", e.target.value);
+              const id = e.target.value;
+              const row = majors.find((m) => m.id === id);
+              setField("majorId", id);
+              setField("major", row ? `${row.name} (${row.type})` : "");
               clr("major");
             }}
             className={ic("major")}
             {...errorProps("major")}
           >
-            <option value="">Select major...</option>
-            {MAJORS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
+            <option value="">
+              {majorsLoading ? "Loading majors…" : majorsError ? "Majors unavailable" : "Select major…"}
+            </option>
+            {majors.some((m) => majorBucket(m) === "undergraduate") && (
+              <optgroup label="Undergraduate">
+                {majors
+                  .filter((m) => majorBucket(m) === "undergraduate")
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.type})
+                    </option>
+                  ))}
+              </optgroup>
+            )}
+            {majors.some((m) => majorBucket(m) === "graduate") && (
+              <optgroup label="Graduate">
+                {majors
+                  .filter((m) => majorBucket(m) === "graduate")
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.type})
+                    </option>
+                  ))}
+              </optgroup>
+            )}
+            {majors.some((m) => majorBucket(m) === "other") && (
+              <optgroup label="Other">
+                {majors
+                  .filter((m) => majorBucket(m) === "other")
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.type})
+                    </option>
+                  ))}
+              </optgroup>
+            )}
           </select>
+          {majorsError && (
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <p className="text-amber-300/90 text-xs" role="status">
+                {majorsError}
+              </p>
+              <button
+                type="button"
+                className="text-xs font-medium text-blue-300 hover:text-blue-200 underline"
+                onClick={() => setMajorsReload((n) => n + 1)}
+              >
+                Retry
+              </button>
+            </div>
+          )}
           {errors.major && (
             <p id={`${ids.major}-err`} role="alert" className="text-red-300 text-xs mt-1">
               {errors.major}

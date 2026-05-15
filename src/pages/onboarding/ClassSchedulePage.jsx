@@ -72,6 +72,9 @@ export default function ClassSchedulePage() {
                 <div>
                   <span className="text-blue-300 text-xs font-mono font-bold">{c.code}</span>
                   <p className="text-white text-sm mt-0.5">{c.title}</p>
+                  {c.description ? (
+                    <p className="text-slate-400 text-xs mt-1 line-clamp-2">{c.description}</p>
+                  ) : null}
                 </div>
                 <button
                   type="button"

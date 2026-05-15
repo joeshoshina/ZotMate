@@ -1,56 +1,101 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { mapCatalogCourse, fetchCourseById, mapFullCourseDetail, searchCoursesFromQuery } from "../../utils/anteaterApi";
 
-const MOCK_COURSES = [
-  { id: "CS161", code: "COMPSCI 161", title: "Design and Analysis of Algorithms" },
-  { id: "CS122A", code: "COMPSCI 122A", title: "Introduction to Data Management" },
-  { id: "CS122B", code: "COMPSCI 122B", title: "Projects in Databases and Web Applications" },
-  { id: "CS142A", code: "COMPSCI 142A", title: "Compilers and Interpreters" },
-  { id: "CS143A", code: "COMPSCI 143A", title: "Principles of Operating Systems" },
-  { id: "IN4MATX121", code: "IN4MATX 121", title: "Software Design: Structure and Implementation" },
-  { id: "IN4MATX124", code: "IN4MATX 124", title: "Internet and Web Application Development" },
-  { id: "IN4MATX131", code: "IN4MATX 131", title: "Collaboration in Software Design" },
-  { id: "IN4MATX151", code: "IN4MATX 151", title: "Project in Human-Computer Interaction" },
-  { id: "STATS120A", code: "STATS 120A", title: "Introduction to Probability and Statistics I" },
-  { id: "STATS120B", code: "STATS 120B", title: "Introduction to Probability and Statistics II" },
-  { id: "MATH2D", code: "MATH 2D", title: "Multivariable Calculus" },
-  { id: "MATH3A", code: "MATH 3A", title: "Introduction to Linear Algebra" },
-  { id: "BIO93", code: "BIO 93", title: "DNA to Organisms" },
-  { id: "CHEM1A", code: "CHEM 1A", title: "General Chemistry" },
-  { id: "ECON20A", code: "ECON 20A", title: "Basic Economics I" },
-  { id: "WRITING39A", code: "WRITING 39A", title: "Accelerated Academic English" },
-  { id: "PHYSICS7C", code: "PHYSICS 7C", title: "Classical Physics" },
-  { id: "PSYCH7A", code: "PSYCH 7A", title: "Biopsychological Foundations of Behavior" },
-  { id: "SOCIOL1", code: "SOCIOL 1", title: "Introduction to Sociology" },
-];
+const MIN_QUERY_LEN = 2;
+const SEARCH_DEBOUNCE_MS = 280;
 
 export default function ClassSearch({ selected, onAdd, onRemove }) {
+  const [deptFilter, setDeptFilter] = useState("");
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [remoteResults, setRemoteResults] = useState([]);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const [remoteError, setRemoteError] = useState(null);
+  const [pendingDetail, setPendingDetail] = useState(false);
   const blurTimer = useRef(null);
   const listboxId = useId();
   const inputId = useId();
+  const deptInputId = useId();
 
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    return MOCK_COURSES.filter(
-      (c) =>
-        (c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q)) &&
-        !selected.find((s) => s.id === c.id),
-    ).slice(0, 6);
-  }, [query, selected]);
+  useEffect(() => {
+    const q = query.trim();
+    const d = deptFilter.trim();
+    if (q.length < MIN_QUERY_LEN && d.length < MIN_QUERY_LEN) {
+      setRemoteResults([]);
+      setRemoteError(null);
+      setRemoteLoading(false);
+      return;
+    }
 
-  const open = focused && results.length > 0;
+    const ctrl = new AbortController();
+    const timer = setTimeout(async () => {
+      setRemoteLoading(true);
+      setRemoteError(null);
+      try {
+        const json = await searchCoursesFromQuery(q, ctrl.signal, { department: d });
+        if (ctrl.signal.aborted) return;
+        if (json?.ok === true && Array.isArray(json.data)) {
+          setRemoteResults(json.data.map(mapCatalogCourse));
+        } else {
+          setRemoteResults([]);
+          setRemoteError(
+            typeof json?.message === "string" ? json.message : "Could not load courses",
+          );
+        }
+      } catch (e) {
+        if (ctrl.signal.aborted || e?.name === "AbortError") return;
+        setRemoteResults([]);
+        setRemoteError("Network error");
+      } finally {
+        if (!ctrl.signal.aborted) setRemoteLoading(false);
+      }
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [query, deptFilter]);
+
+  const results = useMemo(
+    () => remoteResults.filter((c) => !selected.some((s) => s.id === c.id)).slice(0, 8),
+    [remoteResults, selected],
+  );
+
+  const qTrim = query.trim();
+  const dTrim = deptFilter.trim();
+  const hasQuery = qTrim.length >= MIN_QUERY_LEN;
+  const hasDept = dTrim.length >= MIN_QUERY_LEN;
+  const showPanel =
+    focused && (hasQuery || hasDept) && (remoteLoading || remoteError || results.length > 0);
+
+  const open = showPanel;
 
   const choose = (course) => {
-    onAdd(course);
-    setQuery("");
-    setActiveIndex(-1);
+    void (async () => {
+      setPendingDetail(true);
+      setRemoteError(null);
+      try {
+        const json = await fetchCourseById(course.id);
+        if (json?.ok === true && json.data) {
+          onAdd(mapFullCourseDetail(json.data));
+        } else {
+          onAdd(course);
+        }
+      } catch {
+        onAdd(course);
+      } finally {
+        setPendingDetail(false);
+        setQuery("");
+        setActiveIndex(-1);
+      }
+    })();
   };
 
   const onKeyDown = (e) => {
-    if (!open) {
+    if (pendingDetail) return;
+    if (!open || results.length === 0) {
       if (e.key === "ArrowDown" && results.length > 0) {
         e.preventDefault();
         setFocused(true);
@@ -65,7 +110,7 @@ export default function ClassSearch({ selected, onAdd, onRemove }) {
       e.preventDefault();
       setActiveIndex((i) => (i <= 0 ? results.length - 1 : i - 1));
     } else if (e.key === "Enter") {
-      if (activeIndex >= 0 && activeIndex < results.length) {
+      if (activeIndex >= 0 && activeIndex < results.length && !pendingDetail) {
         e.preventDefault();
         choose(results[activeIndex]);
       }
@@ -75,64 +120,106 @@ export default function ClassSearch({ selected, onAdd, onRemove }) {
     }
   };
 
+  const focusIn = () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+    setFocused(true);
+  };
+
+  const focusOutSoon = () => {
+    blurTimer.current = setTimeout(() => {
+      setFocused(false);
+      setActiveIndex(-1);
+    }, 150);
+  };
+
   return (
     <div>
-      <label htmlFor={inputId} className="sr-only">
-        Search for a class by name or code
-      </label>
-      <div
-        className="relative"
-        role="combobox"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-owns={listboxId}
-      >
-        <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="w-4 h-4 ml-4 text-slate-300 shrink-0"
-            aria-hidden="true"
-            focusable="false"
+      <p className="text-slate-400 text-xs mb-2 leading-relaxed">
+        <span className="text-slate-500">Department filter</span> lists courses in that department (or narrows the search below).{" "}
+        <span className="text-slate-500">Search</span>: catalog id (e.g.{" "}
+        <kbd className="px-1 py-0.5 rounded bg-slate-800 border border-slate-600 font-mono text-slate-200 text-[11px]">
+          COMPSCI161
+        </kbd>
+        ), dept + number (e.g.{" "}
+        <kbd className="px-1 py-0.5 rounded bg-slate-800 border border-slate-600 font-mono text-slate-200 text-[11px]">
+          I&C SCI 45C
+        </kbd>
+        ), course #, or words in the title.
+      </p>
+
+      <div onFocusCapture={focusIn} onBlurCapture={focusOutSoon}>
+        <label htmlFor={deptInputId} className="block text-slate-400 text-xs font-medium mb-1.5">
+          Filter by department
+        </label>
+        <input
+          id={deptInputId}
+          type="text"
+          value={deptFilter}
+          onChange={(e) => {
+            setDeptFilter(e.target.value);
+            setActiveIndex(-1);
+          }}
+          placeholder="e.g. I&C SCI, IN4MATX"
+          disabled={pendingDetail}
+          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 text-sm outline-none focus:border-blue-500 transition-colors mb-3"
+        />
+
+        <label htmlFor={inputId} className="sr-only">
+          Search courses by catalog id, department and number, or title
+        </label>
+        <div
+          className="relative"
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-owns={listboxId}
+        >
+          <div
+            className={`flex items-center bg-slate-800 border border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors ${
+              pendingDetail ? "opacity-60 pointer-events-none" : ""
+            }`}
           >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
-            id={inputId}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setActiveIndex(-1);
-            }}
-            onFocus={() => {
-              if (blurTimer.current) clearTimeout(blurTimer.current);
-              setFocused(true);
-            }}
-            onBlur={() => {
-              blurTimer.current = setTimeout(() => {
-                setFocused(false);
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="w-4 h-4 ml-4 text-slate-300 shrink-0"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              id={inputId}
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
                 setActiveIndex(-1);
-              }, 150);
-            }}
-            onKeyDown={onKeyDown}
-            aria-autocomplete="list"
-            aria-controls={listboxId}
-            aria-activedescendant={
-              open && activeIndex >= 0 ? `${listboxId}-opt-${activeIndex}` : undefined
-            }
-            placeholder="Search by course name or code..."
-            className="flex-1 bg-transparent px-3 py-3 text-white placeholder-slate-400 text-sm outline-none"
-          />
-        </div>
+              }}
+              onKeyDown={onKeyDown}
+              aria-autocomplete="list"
+              aria-controls={listboxId}
+              aria-activedescendant={
+                open && activeIndex >= 0 ? `${listboxId}-opt-${activeIndex}` : undefined
+              }
+              placeholder={pendingDetail ? "Loading course…" : "Search courses…"}
+              className="flex-1 bg-transparent px-3 py-3 text-white placeholder-slate-400 text-sm outline-none"
+            />
+          </div>
         {open && (
           <ul
             id={listboxId}
             role="listbox"
             className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-10 overflow-hidden"
           >
+            {remoteLoading && results.length === 0 && (
+              <li className="px-4 py-3 text-slate-400 text-sm">Searching…</li>
+            )}
+            {remoteError && !remoteLoading && results.length === 0 && (
+              <li className="px-4 py-3 text-red-300 text-sm">{remoteError}</li>
+            )}
             {results.map((c, i) => (
               <li
                 key={c.id}
@@ -142,6 +229,7 @@ export default function ClassSearch({ selected, onAdd, onRemove }) {
                 onMouseEnter={() => setActiveIndex(i)}
                 onMouseDown={(e) => {
                   e.preventDefault();
+                  if (pendingDetail) return;
                   choose(c);
                 }}
                 className={`px-4 py-3 cursor-pointer border-b border-slate-700/50 last:border-0 ${
@@ -154,6 +242,7 @@ export default function ClassSearch({ selected, onAdd, onRemove }) {
             ))}
           </ul>
         )}
+        </div>
       </div>
 
       {selected.length > 0 && (
