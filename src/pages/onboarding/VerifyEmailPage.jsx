@@ -1,35 +1,61 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useOnboardingStore } from "../../store/useOnboardingStore";
 import ProgressBar from "../../components/common/ProgressBar";
 import OnboardingLayout from "../../components/common/OnboardingLayout";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
+import { auth } from "../../firebase/config"; 
+import { sendEmailVerification } from "firebase/auth";
+
 export default function VerifyEmailPage() {
   useDocumentTitle("Verify email");
   const navigate = useNavigate();
-  const { schoolEmail, setField } = useOnboardingStore();
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
-  const inputId = useId();
-  const errId = useId();
+  const [isChecking, setIsChecking] = useState(false);
+  
+  // Grab the currently logged-in user
+  const currentUser = auth.currentUser;
 
-  const handleSend = (e) => {
-    if (e?.preventDefault) e.preventDefault();
-    if (!schoolEmail.trim().toLowerCase().endsWith("@uci.edu")) {
-      setError("Must be a @uci.edu email address");
-      return;
+  const handleSend = async () => {
+    try {
+      if (!currentUser) throw new Error("Authentication error: No user found.");
+
+      await sendEmailVerification(currentUser);
+      
+      setSent(true);
+      setError("");
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to send email. Please try again.");
     }
-    setSent(true);
-    setError("");
   };
 
-  const handleContinue = () => {
-    if (!sent) {
-      setError("Send the verification email first");
+  const handleContinue = async () => {
+    if (!currentUser) {
+      setError("No user is currently logged in.");
       return;
     }
-    navigate("/onboarding/classes");
+
+    setIsChecking(true);
+    setError("");
+
+    try {
+      // 1. Force Firebase to fetch the newest data from the server
+      await currentUser.reload();
+      
+      // 2. Check the real, updated verification status
+      if (currentUser.emailVerified) {
+        navigate("/onboarding/classes");
+      } else {
+        setError("Email not verified yet! Please click the link in your inbox, then click Continue.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to check verification status. Please try again.");
+    } finally {
+      setIsChecking(false);
+    }
   };
 
   return (
@@ -40,77 +66,55 @@ export default function VerifyEmailPage() {
         aria-label="Go back to personal info"
         className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors mb-4 text-sm"
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          className="w-4 h-4"
-          aria-hidden="true"
-          focusable="false"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
           <path d="M19 12H5M12 5l-7 7 7 7" />
         </svg>
         Back
       </button>
       <ProgressBar current={2} total={5} />
+      
       <div className="mt-6 mb-5">
-        <h1 className="text-white font-bold text-xl">Verify UCI Email</h1>
+        <h1 className="text-white font-bold text-xl">Verify Email</h1>
         <p className="text-slate-300 text-sm mt-1">
-          Confirm you're a real Anteater <span aria-hidden="true">🐜</span>
+          Confirm your identity to continue <span aria-hidden="true">🔒</span>
         </p>
       </div>
-      <form onSubmit={handleSend} className="space-y-4" noValidate>
-        <div>
-          <label htmlFor={inputId} className="block text-slate-300 text-xs font-medium mb-1.5 uppercase tracking-wide">
-            UCI Email
-          </label>
-          <input
-            id={inputId}
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            value={schoolEmail}
-            onChange={(e) => {
-              setField("schoolEmail", e.target.value);
-              setError("");
-              setSent(false);
-            }}
-            placeholder="panteater@uci.edu"
-            aria-invalid={error ? "true" : undefined}
-            aria-describedby={error ? errId : undefined}
-            className={`w-full bg-slate-800 border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors placeholder-slate-400 ${
-              error ? "border-red-500" : "border-slate-700 focus:border-blue-500"
-            }`}
-          />
-          {error && (
-            <p id={errId} role="alert" className="text-red-300 text-xs mt-1">
-              {error}
-            </p>
-          )}
+
+      <div className="space-y-4">
+        <div className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-4">
+          <p className="text-slate-400 text-xs font-medium mb-1 uppercase tracking-wide">Account Email</p>
+          <p className="text-white font-medium">{currentUser?.email || "Loading..."}</p>
         </div>
-        {sent && (
+
+        {error && <p role="alert" className="text-red-400 font-medium text-sm mt-1 bg-red-900/20 p-3 rounded-lg border border-red-900/50">{error}</p>}
+
+        {sent && !error && (
           <div role="status" className="bg-green-900/30 border border-green-700/50 rounded-xl p-4">
             <p className="text-green-300 font-medium text-sm">
               <span aria-hidden="true">✓ </span>Verification email sent!
             </p>
-            <p className="text-green-200/90 text-xs mt-1">Check your inbox. For demo, click Continue below.</p>
+            <p className="text-green-200/90 text-xs mt-1">Check your inbox to verify your account.</p>
           </div>
         )}
+
         <button
-          type="submit"
+          type="button"
+          onClick={handleSend}
           className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-medium py-3 rounded-xl transition-colors text-sm"
         >
-          {sent ? "Resend Email" : "Send Verification Email"}
+          {sent ? "Resend Verification Email" : "Send Verification Email"}
         </button>
+
         <button
           type="button"
           onClick={handleContinue}
-          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-semibold py-3.5 rounded-xl transition-colors text-sm shadow-lg shadow-blue-600/20"
+          disabled={isChecking}
+          className="w-full text-white font-semibold py-3.5 rounded-xl transition-all duration-200 text-sm shadow-lg disabled:opacity-40 hover:brightness-110 flex justify-center items-center gap-2"
+          style={{ backgroundColor: "#F2930D", shadowColor: "rgba(242, 147, 13, 0.2)" }}
         >
-          Continue →
+          {isChecking ? "Checking Status..." : "I've Verified My Email →"}
         </button>
-      </form>
+      </div>
     </OnboardingLayout>
   );
 }
