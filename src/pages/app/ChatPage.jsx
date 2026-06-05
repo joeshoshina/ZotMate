@@ -134,26 +134,6 @@ export default function ChatPage() {
     }
 
     setDraftMessages((prev) => [...prev, newMsg]);
-    if (Math.random() > 0.4) {
-      const replies = [
-        "That sounds great!",
-        "Haha yes exactly",
-        "Definitely! When are you free?",
-        "Same lol",
-        "We should study together!",
-      ];
-      setTimeout(() => {
-        setDraftMessages((prev) => [
-          ...prev,
-          {
-            id: `reply-${Date.now()}`,
-            senderEmail: matchEmail,
-            text: replies[Math.floor(Math.random() * replies.length)],
-            createdAt: Date.now(),
-          },
-        ]);
-      }, 1500);
-    }
   };
 
   return (
