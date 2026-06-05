@@ -1,16 +1,16 @@
 Testing Guide:
 
-Due to the nature of the application matches happen on a set weekly basis. For testing purposes I made and set up two accounts with my email for testing. I will also detail how to create a new account to test account creation but it will not be able to match with anyone as the matches get pushed in weekly cycles.
+Due to the nature of the application, matches happen on a set weekly basis. For testing purposes, I made and set up two accounts with my email for testing. I will also detail how to create a new account to test account creation but it will not be able to match with anyone as the matches get pushed in weekly cycles.
 
 To Test Messaging:
-Sign in with these email + password combos (must be different browsers i.e., signed in chrome and Incognito browser).
+Sign in with these email + password combos (must be different browsers i.e., signed in Chrome and Incognito browser).
 ecstewa1@gmail.com     TestUser1
 ecstewa1@uci.edu       UserTest2
 From here, you can go to messages and send messages between the accounts, which will be live and run through Firebase.
 
 To test account creation:
-Sign in with any NON uci email (UCI spam filters make it impossible if we don't have a registered web address, so to keep this free for the team, we allowed any email to create an account).
-When verifying email check your spam folder (once again due to it not being a registered website it goes to spam but at least can be seen).
+Sign in with any NON UCI email (UCI spam filters make it impossible if we don't have a registered web address, so to keep this free for the team, we allow any email to create an account).
+When verifying email, check your spam folder (once again due to it not being a registered website, it goes to spam, but at least it can be seen).
 
 # React + Vite
 
