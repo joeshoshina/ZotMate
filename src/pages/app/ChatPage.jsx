@@ -213,7 +213,7 @@ export default function ChatPage() {
           </div>
         )}
 
-        <MessageList messages={messages} currentUserEmail={currentUserEmail} />
+        <MessageList messages={messages} currentUserEmail={currentUserEmail} otherUserName={match.name} />
         <MessageInput onSend={handleSend} />
 
         <div className="md:hidden h-16 shrink-0" />
