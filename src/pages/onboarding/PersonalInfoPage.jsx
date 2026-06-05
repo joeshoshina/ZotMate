@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useOnboardingStore } from "../../store/useOnboardingStore";
 import ProgressBar from "../../components/common/ProgressBar";
 import OnboardingLayout from "../../components/common/OnboardingLayout";
-import { SCHOOL_YEARS } from "../../data/mockData";
+import { MAJORS, SCHOOL_YEARS } from "../../data/mockData";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { fetchMajors } from "../../utils/anteaterApi";
 
@@ -14,6 +14,13 @@ function majorBucket(m) {
   if (d === "graduate") return "graduate";
   return "other";
 }
+
+const FALLBACK_MAJORS = MAJORS.map((name) => ({
+  id: `fallback-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+  name,
+  type: "B.S.",
+  division: "undergraduate",
+}));
 
 export default function PersonalInfoPage() {
   useDocumentTitle("Personal info");
@@ -53,13 +60,13 @@ export default function PersonalInfoPage() {
           );
           setMajorsError(null);
         } else {
-          setMajors([]);
-          setMajorsError(typeof json?.message === "string" ? json.message : "Could not load majors");
+          setMajors(FALLBACK_MAJORS);
+          setMajorsError("Using local demo majors because the catalog API is unavailable.");
         }
-      } catch (e) {
+      } catch {
         if (reqRef.current !== myId) return;
-        setMajors([]);
-        setMajorsError(e instanceof Error ? e.message : "Network error");
+        setMajors(FALLBACK_MAJORS);
+        setMajorsError("Using local demo majors because the catalog API is unavailable.");
       } finally {
         if (reqRef.current === myId) setMajorsLoading(false);
       }
@@ -232,7 +239,7 @@ export default function PersonalInfoPage() {
           <select
             id={ids.major}
             value={majorId}
-            disabled={majorsLoading || (!majors.length && majorsError)}
+            disabled={majorsLoading}
             onChange={(e) => {
               const id = e.target.value;
               const row = majors.find((m) => m.id === id);
@@ -244,7 +251,7 @@ export default function PersonalInfoPage() {
             {...errorProps("major")}
           >
             <option value="">
-              {majorsLoading ? "Loading majors…" : majorsError ? "Majors unavailable" : "Select major…"}
+              {majorsLoading ? "Loading majors…" : "Select major…"}
             </option>
             {majors.some((m) => majorBucket(m) === "undergraduate") && (
               <optgroup label="Undergraduate">
