@@ -40,6 +40,7 @@ export default function MatchCard({ match, compact = false }) {
           <p className="text-slate-300 text-xs mt-0.5">
             {match.year} · {match.major}
           </p>
+          {match.email && <p className="text-slate-500 text-xs mt-1 truncate">{match.email}</p>}
           <p className="text-slate-400 text-xs mt-1 truncate">{match.bio}</p>
         </div>
         <svg
@@ -76,6 +77,7 @@ export default function MatchCard({ match, compact = false }) {
             <p className="text-slate-300 text-sm mt-0.5">
               {match.year} · {match.major}
             </p>
+            {match.email && <p className="text-slate-500 text-xs mt-1 truncate">{match.email}</p>}
             <p className="text-slate-200 text-sm mt-2 leading-relaxed">{match.bio}</p>
           </div>
         </div>

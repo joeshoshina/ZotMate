@@ -8,7 +8,7 @@ function isoTime(ts) {
   return new Date(ts).toISOString();
 }
 
-export default function MessageList({ messages, currentUserId }) {
+export default function MessageList({ messages, currentUserEmail }) {
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function MessageList({ messages, currentUserId }) {
       className="flex-1 overflow-y-auto px-4 py-4 space-y-2"
     >
       {messages.map((msg, i) => {
-        const isMe = msg.senderId === currentUserId;
+        const isMe = msg.senderEmail === currentUserEmail || msg.senderId === currentUserEmail;
         const prevMsg = messages[i - 1];
         const showTime = !prevMsg || msg.createdAt - prevMsg.createdAt > 300000;
 
@@ -57,7 +57,9 @@ export default function MessageList({ messages, currentUserId }) {
                     : "bg-slate-800 text-white border border-slate-700 rounded-bl-sm"
                 }`}
               >
-                <span className="sr-only">{isMe ? "You said:" : "They said:"} </span>
+                <span className="sr-only">
+                  {isMe ? "You said:" : `${msg.senderEmail || "They"} said:`}{" "}
+                </span>
                 {msg.text}
               </div>
             </div>

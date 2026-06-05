@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import MessageList from "../../components/chat/MessageList";
@@ -9,18 +9,55 @@ import BottomNav from "../../components/common/BottomNav";
 import OfflineBanner from "../../components/common/OfflineBanner";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useMatchReveal } from "../../hooks/useMatchReveal";
+import { useMessages } from "../../hooks/useMessages";
 import WeeklyMatchLockedCard from "../../components/match/WeeklyMatchLockedCard";
+import {
+  DEMO_USER_EMAIL,
+  getConversationStorageKey,
+  getParticipantEmail,
+  loadStoredMessages,
+  saveStoredMessages,
+} from "../../utils/messaging";
 
 export default function ChatPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const match = MOCK_MATCHES.find((m) => m.id === id);
   const [revealed, reveal] = useMatchReveal();
-  const [messages, setMessages] = useState(MOCK_MESSAGES[id] || []);
+  const currentUserEmail = getParticipantEmail(user, profile);
+  const matchEmail = match?.email;
+  const storageKey = useMemo(
+    () => (matchEmail ? getConversationStorageKey(currentUserEmail, matchEmail) : null),
+    [currentUserEmail, matchEmail]
+  );
+  const seededMessages = useMemo(
+    () =>
+      (MOCK_MESSAGES[id] || []).map((message) =>
+        message.senderEmail === DEMO_USER_EMAIL
+          ? { ...message, senderEmail: currentUserEmail }
+          : message
+      ),
+    [currentUserEmail, id]
+  );
+  const initialMessages = useMemo(
+    () => (storageKey ? loadStoredMessages(storageKey, seededMessages) : []),
+    [seededMessages, storageKey]
+  );
+  const [draftMessages, setDraftMessages] = useState(initialMessages);
+  const { messages } = useMessages(draftMessages);
   useDocumentTitle(
     !match ? "Chat" : match.id === WEEKLY_FEATURED_MATCH_ID && !revealed ? "Match" : `Chat with ${match.name}`
   );
+
+  useEffect(() => {
+    setDraftMessages(initialMessages);
+  }, [initialMessages]);
+
+  useEffect(() => {
+    if (!storageKey) return;
+    saveStoredMessages(storageKey, draftMessages);
+  }, [draftMessages, storageKey]);
 
   if (!match) {
     return (
@@ -63,25 +100,25 @@ export default function ChatPage() {
   const handleSend = (text) => {
     const newMsg = {
       id: `msg-${Date.now()}`,
-      senderId: user?.uid || "mock-uid-1",
+      senderEmail: currentUserEmail,
       text,
       createdAt: Date.now(),
     };
-    setMessages((prev) => [...prev, newMsg]);
+    setDraftMessages((prev) => [...prev, newMsg]);
     if (Math.random() > 0.4) {
       const replies = [
         "That sounds great!",
-        "Haha yes exactly 😄",
+        "Haha yes exactly",
         "Definitely! When are you free?",
         "Same lol",
         "We should study together!",
       ];
       setTimeout(() => {
-        setMessages((prev) => [
+        setDraftMessages((prev) => [
           ...prev,
           {
             id: `reply-${Date.now()}`,
-            senderId: id,
+            senderEmail: matchEmail,
             text: replies[Math.floor(Math.random() * replies.length)],
             createdAt: Date.now(),
           },
@@ -138,6 +175,9 @@ export default function ChatPage() {
             <p className="text-slate-300 text-xs">
               {match.year} · {match.major}
             </p>
+            <p className="text-slate-400 text-xs truncate">
+              {currentUserEmail} to {matchEmail}
+            </p>
           </div>
           <span className="bg-blue-600/20 border border-blue-500/40 text-blue-200 text-xs font-semibold px-2 py-0.5 rounded-full">
             {match.score}% match
@@ -153,7 +193,7 @@ export default function ChatPage() {
           </div>
         )}
 
-        <MessageList messages={messages} currentUserId={user?.uid || "mock-uid-1"} />
+        <MessageList messages={messages} currentUserEmail={currentUserEmail} />
         <MessageInput onSend={handleSend} />
 
         <div className="md:hidden h-16 shrink-0" />

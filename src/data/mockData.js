@@ -19,6 +19,7 @@ export const MAJORS = [
 export const MOCK_MATCHES = [
   {
     id: "match-1",
+    email: "priya.sharma@uci.edu",
     name: "Priya Sharma",
     major: "Computer Science",
     year: "Junior",
@@ -32,6 +33,7 @@ export const MOCK_MATCHES = [
   },
   {
     id: "match-2",
+    email: "marcus.chen@uci.edu",
     name: "Marcus Chen",
     major: "Data Science",
     year: "Senior",
@@ -45,6 +47,7 @@ export const MOCK_MATCHES = [
   },
   {
     id: "match-3",
+    email: "aisha.johnson@uci.edu",
     name: "Aisha Johnson",
     major: "Informatics",
     year: "Sophomore",
@@ -63,15 +66,15 @@ export const WEEKLY_FEATURED_MATCH_ID = MOCK_MATCHES[0]?.id ?? null;
 
 export const MOCK_MESSAGES = {
   "match-1": [
-    { id: "m1", senderId: "match-1", text: "Hey! Looks like we're both in IN4MATX 124 😊", createdAt: Date.now() - 3600000 * 5 },
-    { id: "m2", senderId: "mock-uid-1", text: "Yes! Are you enjoying the class so far?", createdAt: Date.now() - 3600000 * 4 },
-    { id: "m3", senderId: "match-1", text: "It's a lot of work but really interesting. Working on the project rn actually", createdAt: Date.now() - 3600000 * 3 },
-    { id: "m4", senderId: "mock-uid-1", text: "Same! We should study together sometime", createdAt: Date.now() - 3600000 * 2 },
-    { id: "m5", senderId: "match-1", text: "Definitely! Aldrich library tomorrow?", createdAt: Date.now() - 3600000 },
+    { id: "m1", senderEmail: "priya.sharma@uci.edu", text: "Hey! Looks like we're both in IN4MATX 124 😊", createdAt: Date.now() - 3600000 * 5 },
+    { id: "m2", senderEmail: "demo.anteater@uci.edu", text: "Yes! Are you enjoying the class so far?", createdAt: Date.now() - 3600000 * 4 },
+    { id: "m3", senderEmail: "priya.sharma@uci.edu", text: "It's a lot of work but really interesting. Working on the project rn actually", createdAt: Date.now() - 3600000 * 3 },
+    { id: "m4", senderEmail: "demo.anteater@uci.edu", text: "Same! We should study together sometime", createdAt: Date.now() - 3600000 * 2 },
+    { id: "m5", senderEmail: "priya.sharma@uci.edu", text: "Definitely! Aldrich library tomorrow?", createdAt: Date.now() - 3600000 },
   ],
   "match-2": [
-    { id: "m6", senderId: "match-2", text: "Yo! Fellow CS 161 survivor 😅", createdAt: Date.now() - 86400000 * 2 },
-    { id: "m7", senderId: "mock-uid-1", text: "Haha that midterm was brutal", createdAt: Date.now() - 86400000 * 2 + 60000 },
+    { id: "m6", senderEmail: "marcus.chen@uci.edu", text: "Yo! Fellow CS 161 survivor 😅", createdAt: Date.now() - 86400000 * 2 },
+    { id: "m7", senderEmail: "demo.anteater@uci.edu", text: "Haha that midterm was brutal", createdAt: Date.now() - 86400000 * 2 + 60000 },
   ],
   "match-3": [],
 };
