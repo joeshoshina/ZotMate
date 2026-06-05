@@ -14,7 +14,6 @@ export default function VerifyEmailPage() {
   const [error, setError] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   
-  // Grab the currently logged-in user
   const currentUser = auth.currentUser;
 
   const handleSend = async () => {
@@ -41,10 +40,8 @@ export default function VerifyEmailPage() {
     setError("");
 
     try {
-      // 1. Force Firebase to fetch the newest data from the server
       await currentUser.reload();
       
-      // 2. Check the real, updated verification status
       if (currentUser.emailVerified) {
         navigate("/onboarding/classes");
       } else {

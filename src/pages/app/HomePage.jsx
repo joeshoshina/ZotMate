@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
+import { collection, query, where, getDocs, doc, getDoc, or } from "firebase/firestore";
 import AppLayout from "../../components/common/AppLayout";
 import CountdownTimer from "../../components/match/CountdownTimer";
 import MatchCard from "../../components/match/MatchCard";
 import WeeklyMatchLockedCard from "../../components/match/WeeklyMatchLockedCard";
 import { useAuth } from "../../context/AuthContext";
-import { MOCK_MATCHES } from "../../data/mockData";
+import { db } from "../../firebase/config";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useMatchReveal } from "../../hooks/useMatchReveal";
 
@@ -11,7 +13,51 @@ export default function HomePage() {
   useDocumentTitle("Home");
   const { profile } = useAuth();
   const [revealed, reveal] = useMatchReveal();
-  const latestMatch = MOCK_MATCHES[0];
+  const [latestMatch, setLatestMatch] = useState(null);
+
+  useEffect(() => {
+    async function fetchMatch() {
+      if (!profile?.uid) return;
+
+      const matchesRef = collection(db, "matches");
+      const q = query(
+        matchesRef,
+        or(
+          where("userAId", "==", profile.uid),
+          where("userBId", "==", profile.uid)
+        )
+      );
+
+      const matchSnapshot = await getDocs(q);
+
+      if (!matchSnapshot.empty) {
+        const matchDoc = matchSnapshot.docs[0].data();
+        const otherUserId = matchDoc.userAId === profile.uid ? matchDoc.userBId : matchDoc.userAId;
+
+        const otherUserRef = doc(db, "users", otherUserId);
+        const otherUserSnap = await getDoc(otherUserRef);
+
+        if (otherUserSnap.exists()) {
+          const otherUserData = otherUserSnap.data();
+          
+          setLatestMatch({
+            id: matchSnapshot.docs[0].id,
+            name: `${otherUserData.firstName} ${otherUserData.lastName}`,
+            major: otherUserData.major,
+            year: otherUserData.schoolYear,
+            interests: matchDoc.sharedInterests,
+            classes: matchDoc.sharedClasses,
+            score: matchDoc.score,
+            avatar: otherUserData.photoURL || null,
+            initials: `${otherUserData.firstName?.[0] || ""}${otherUserData.lastName?.[0] || ""}`,
+            bio: otherUserData.bio,
+          });
+        }
+      }
+    }
+
+    fetchMatch();
+  }, [profile]);
 
   return (
     <AppLayout>
@@ -34,7 +80,13 @@ export default function HomePage() {
                   Revealed
                 </span>
               </div>
-              <MatchCard match={latestMatch} />
+              {latestMatch ? (
+                <MatchCard match={latestMatch} />
+              ) : (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center text-slate-300">
+                  No matches yet. Check back on Monday!
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -48,9 +100,9 @@ export default function HomePage() {
 
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Matches", value: MOCK_MATCHES.length },
-              { label: "Classes", value: profile?.classes?.length || 3 },
-              { label: "Interests", value: profile?.interests?.length || 5 },
+              { label: "Matches", value: latestMatch ? 1 : 0 },
+              { label: "Classes", value: profile?.classes?.length || 0 },
+              { label: "Interests", value: profile?.interests?.length || 0 },
             ].map(({ label, value }) => (
               <div key={label} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center">
                 <p className="text-white font-bold text-2xl">{value}</p>

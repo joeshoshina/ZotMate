@@ -20,7 +20,6 @@ export default function LoginPage() {
     
     const emailInput = email.trim().toLowerCase();
 
-    // Basic email check instead of strict UCI check
     if (!emailInput.includes("@") || !emailInput.includes(".")) {
       setError("Please enter a valid email address.");
       return;
