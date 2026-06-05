@@ -1,23 +1,47 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import OnboardingLayout from "../../components/common/OnboardingLayout";
+import RouteLoadingScreen from "../../components/common/RouteLoadingScreen";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
+function authErrorMessage(err) {
+  const code = err?.code || "";
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+    return "Incorrect email or password.";
+  }
+  if (code === "auth/too-many-requests") {
+    return "Too many attempts. Please try again later.";
+  }
+  return err.message || "Something went wrong. Please try again.";
+}
+
 export default function LoginPage() {
-  useDocumentTitle("Sign Up");
+  useDocumentTitle("Welcome");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  
-  const { registerUser } = useAuth(); 
+
+  const { user, profile, loading, registerUser, signInUser } = useAuth();
   const navigate = useNavigate();
+
+  if (loading) {
+    return <RouteLoadingScreen />;
+  }
+
+  if (user && profile) {
+    return <Navigate to="/home" replace />;
+  }
+
+  if (user && !profile) {
+    return <Navigate to="/onboarding/personal-info" replace />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (loading) return;
-    
+    if (submitting) return;
+
     const emailInput = email.trim().toLowerCase();
 
     if (!emailInput.includes("@") || !emailInput.includes(".")) {
@@ -30,16 +54,25 @@ export default function LoginPage() {
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
     setError("");
-    
+
     try {
-      await registerUser(emailInput, password);
-      navigate("/onboarding/personal-info"); 
+      const { profile: existingProfile } = await signInUser(emailInput, password);
+      navigate(existingProfile ? "/home" : "/onboarding/personal-info");
     } catch (err) {
-      setError(err.message || "Failed to create account. Please try again.");
+      if (err.code === "auth/user-not-found") {
+        try {
+          await registerUser(emailInput, password);
+          navigate("/onboarding/personal-info");
+        } catch (regErr) {
+          setError(authErrorMessage(regErr));
+        }
+      } else {
+        setError(authErrorMessage(err));
+      }
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -55,10 +88,12 @@ export default function LoginPage() {
 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
         <h2 className="text-white font-bold text-xl mb-1">
-          Create Account <span aria-hidden="true">👋</span>
+          Welcome <span aria-hidden="true">👋</span>
         </h2>
-        <p className="text-slate-300 text-sm mb-5">Sign up with your email to get started</p>
-        
+        <p className="text-slate-300 text-sm mb-5">
+          Enter your email to continue. New accounts start onboarding automatically.
+        </p>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-slate-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
@@ -71,9 +106,9 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
-                  setError(""); 
+                  setError("");
                 }}
-                placeholder="you@example.com"
+                placeholder="you@uci.edu"
                 className="flex-1 bg-transparent px-4 py-3.5 text-white placeholder-slate-400 text-sm outline-none"
                 required
               />
@@ -107,10 +142,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={submitting}
             className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-3.5 rounded-xl transition-colors text-sm shadow-lg shadow-blue-600/20"
           >
-            {loading ? "Creating Account..." : "Sign Up →"}
+            {submitting ? "Continuing..." : "Continue →"}
           </button>
         </form>
       </div>

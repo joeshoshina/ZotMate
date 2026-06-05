@@ -1,6 +1,7 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import OnboardingRoute from "./OnboardingRoute";
+import RootRedirect from "./RootRedirect";
 import LoginPage from "../pages/auth/LoginPage";
 import VerifySMSPage from "../pages/auth/VerifySMSPage";
 import PersonalInfoPage from "../pages/onboarding/PersonalInfoPage";
@@ -49,7 +50,8 @@ export default function AppRouter() {
           <Route path="/settings/about" element={<AboutZotMatePage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" />} />
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="*" element={<RootRedirect />} />
       </Routes>
     </BrowserRouter>
   );

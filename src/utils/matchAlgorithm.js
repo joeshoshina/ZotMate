@@ -4,6 +4,13 @@
  * Matches greedily based on highest total score.
  */
 
+export const MAX_POSSIBLE_MATCH_SCORE = 63;
+
+/** @param {number} rawScore */
+export function rawScoreToPercentage(rawScore) {
+  return Math.round((rawScore / MAX_POSSIBLE_MATCH_SCORE) * 100);
+}
+
 // Pure point breakdown per category
 const POINTS = {
   CLASS: 10,

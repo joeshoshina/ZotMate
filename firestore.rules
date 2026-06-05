@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isMatchParticipant(matchId) {
+      let matchData = get(/databases/$(database)/documents/matches/$(matchId)).data;
+      return request.auth.uid == matchData.userAId || request.auth.uid == matchData.userBId;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /matches/{matchId} {
+      allow read: if isSignedIn() &&
+        (request.auth.uid == resource.data.userAId || request.auth.uid == resource.data.userBId);
+      allow create, update, delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && isMatchParticipant(matchId);
+        allow create: if isSignedIn() &&
+          isMatchParticipant(matchId) &&
+          request.resource.data.senderId == request.auth.uid &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() > 0 &&
+          request.resource.data.text.size() <= 2000;
+        allow update, delete: if false;
+      }
+    }
+  }
+}

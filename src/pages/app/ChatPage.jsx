@@ -1,26 +1,35 @@
-import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import MessageList from "../../components/chat/MessageList";
 import MessageInput from "../../components/chat/MessageInput";
-import { MOCK_MATCHES, MOCK_MESSAGES, WEEKLY_FEATURED_MATCH_ID } from "../../data/mockData";
 import Sidebar from "../../components/common/Sidebar";
 import BottomNav from "../../components/common/BottomNav";
 import OfflineBanner from "../../components/common/OfflineBanner";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useMatchReveal } from "../../hooks/useMatchReveal";
 import WeeklyMatchLockedCard from "../../components/match/WeeklyMatchLockedCard";
+import { useChatMessages } from "../../hooks/useChatMessages";
+import { useLiveMatch } from "../../hooks/useLiveMatch";
+import RouteLoadingScreen from "../../components/common/RouteLoadingScreen";
 
 export default function ChatPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const match = MOCK_MATCHES.find((m) => m.id === id);
+  const { user, profile } = useAuth();
   const [revealed, reveal] = useMatchReveal();
-  const [messages, setMessages] = useState(MOCK_MESSAGES[id] || []);
-  useDocumentTitle(
-    !match ? "Chat" : match.id === WEEKLY_FEATURED_MATCH_ID && !revealed ? "Match" : `Chat with ${match.name}`
+  const { match, loading: loadingMatch } = useLiveMatch(id, user?.uid, profile);
+  const { messages, loading: loadingMessages, sendMessage } = useChatMessages(
+    id,
+    user?.uid
   );
+
+  useDocumentTitle(
+    !match ? "Chat" : !revealed ? "Match" : `Chat with ${match.name}`
+  );
+
+  if (loadingMatch) {
+    return <RouteLoadingScreen />;
+  }
 
   if (!match) {
     return (
@@ -39,7 +48,7 @@ export default function ChatPage() {
     );
   }
 
-  if (match.id === WEEKLY_FEATURED_MATCH_ID && !revealed) {
+  if (!revealed) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 pb-24 md:pb-8">
         <div className="w-full max-w-md">
@@ -60,33 +69,11 @@ export default function ChatPage() {
     );
   }
 
-  const handleSend = (text) => {
-    const newMsg = {
-      id: `msg-${Date.now()}`,
-      senderId: user?.uid || "mock-uid-1",
-      text,
-      createdAt: Date.now(),
-    };
-    setMessages((prev) => [...prev, newMsg]);
-    if (Math.random() > 0.4) {
-      const replies = [
-        "That sounds great!",
-        "Haha yes exactly 😄",
-        "Definitely! When are you free?",
-        "Same lol",
-        "We should study together!",
-      ];
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `reply-${Date.now()}`,
-            senderId: id,
-            text: replies[Math.floor(Math.random() * replies.length)],
-            createdAt: Date.now(),
-          },
-        ]);
-      }, 1500);
+  const handleSend = async (text) => {
+    try {
+      await sendMessage(text);
+    } catch (err) {
+      console.error("Failed to send message:", err);
     }
   };
 
@@ -153,7 +140,13 @@ export default function ChatPage() {
           </div>
         )}
 
-        <MessageList messages={messages} currentUserId={user?.uid || "mock-uid-1"} />
+        {loadingMessages ? (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-slate-400 text-sm">Loading messages...</p>
+          </div>
+        ) : (
+          <MessageList messages={messages} currentUserId={user?.uid} />
+        )}
         <MessageInput onSend={handleSend} />
 
         <div className="md:hidden h-16 shrink-0" />

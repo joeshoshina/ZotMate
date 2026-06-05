@@ -107,27 +107,39 @@ export default function SettingsPage() {
     );
   };
 
-  const saveClasses = () => {
-    updateProfile({ classes: draftClasses });
-    setClassesOpen(false);
+  const saveClasses = async () => {
+    try {
+      await updateProfile({ classes: draftClasses });
+      setClassesOpen(false);
+    } catch {
+      setClassError("Failed to save. Please try again.");
+    }
   };
 
-  const saveInterests = () => {
+  const saveInterests = async () => {
     if (draftInterests.length < 3) {
       setInterestError("Pick at least 3 interests");
       return;
     }
-    updateProfile({ interests: draftInterests });
-    setInterestsOpen(false);
+    try {
+      await updateProfile({ interests: draftInterests });
+      setInterestsOpen(false);
+    } catch {
+      setInterestError("Failed to save. Please try again.");
+    }
   };
 
-  const saveIdentity = () => {
+  const saveIdentity = async () => {
     if (!draftIAm || !draftLookingFor) {
       setIdentityError("Please make a selection for both");
       return;
     }
-    updateProfile({ iAm: draftIAm, lookingFor: draftLookingFor });
-    setIdentityOpen(false);
+    try {
+      await updateProfile({ iAm: draftIAm, lookingFor: draftLookingFor });
+      setIdentityOpen(false);
+    } catch {
+      setIdentityError("Failed to save. Please try again.");
+    }
   };
 
   const cancelButton = (onClick) => (
