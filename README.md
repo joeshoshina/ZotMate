@@ -4,8 +4,8 @@ Due to the nature of the application, matches happen on a set weekly basis. For 
 
 To Test Messaging:
 Sign in with these email + password combos (must be different browsers i.e., signed in Chrome and Incognito browser).
-ecstewa1@gmail.com     TestUser1
-ecstewa1@uci.edu       UserTest2
+Email: ecstewa1@gmail.com    Password: TestUser1
+Email: ecstewa1@uci.edu      Password: UserTest2
 From here, you can go to messages and send messages between the accounts, which will be live and run through Firebase.
 
 To test account creation:
