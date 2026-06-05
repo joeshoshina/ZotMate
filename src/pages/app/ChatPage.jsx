@@ -3,7 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import MessageList from "../../components/chat/MessageList";
 import MessageInput from "../../components/chat/MessageInput";
-import { MOCK_MATCHES, MOCK_MESSAGES, WEEKLY_FEATURED_MATCH_ID } from "../../data/mockData";
+import { getMatchByIdForEmail, MOCK_MESSAGES, WEEKLY_FEATURED_MATCH_ID } from "../../data/mockData";
+import {
+  canUseFirestoreMessages,
+  sendFirestoreMessage,
+  subscribeToConversation,
+} from "../../firebase/messages";
 import Sidebar from "../../components/common/Sidebar";
 import BottomNav from "../../components/common/BottomNav";
 import OfflineBanner from "../../components/common/OfflineBanner";
@@ -23,10 +28,12 @@ export default function ChatPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const match = MOCK_MATCHES.find((m) => m.id === id);
   const [revealed, reveal] = useMatchReveal();
+  const [chatError, setChatError] = useState("");
   const currentUserEmail = getParticipantEmail(user, profile);
+  const match = getMatchByIdForEmail(id, currentUserEmail);
   const matchEmail = match?.email;
+  const usingFirestore = canUseFirestoreMessages();
   const storageKey = useMemo(
     () => (matchEmail ? getConversationStorageKey(currentUserEmail, matchEmail) : null),
     [currentUserEmail, matchEmail]
@@ -41,8 +48,8 @@ export default function ChatPage() {
     [currentUserEmail, id]
   );
   const initialMessages = useMemo(
-    () => (storageKey ? loadStoredMessages(storageKey, seededMessages) : []),
-    [seededMessages, storageKey]
+    () => (storageKey && !usingFirestore ? loadStoredMessages(storageKey, seededMessages) : []),
+    [seededMessages, storageKey, usingFirestore]
   );
   const [draftMessages, setDraftMessages] = useState(initialMessages);
   const { messages } = useMessages(draftMessages);
@@ -51,13 +58,25 @@ export default function ChatPage() {
   );
 
   useEffect(() => {
-    setDraftMessages(initialMessages);
-  }, [initialMessages]);
+    if (!storageKey || usingFirestore) return;
+    saveStoredMessages(storageKey, draftMessages);
+  }, [draftMessages, storageKey, usingFirestore]);
 
   useEffect(() => {
-    if (!storageKey) return;
-    saveStoredMessages(storageKey, draftMessages);
-  }, [draftMessages, storageKey]);
+    if (!usingFirestore || !matchEmail) return undefined;
+
+    return subscribeToConversation(
+      { currentUserEmail, matchEmail, matchId: match.id },
+      (nextMessages) => {
+        setDraftMessages(nextMessages);
+        setChatError("");
+      },
+      (error) => {
+        console.error("Error loading conversation:", error);
+        setChatError("Could not sync this chat from Firebase. Check Firestore rules and config.");
+      },
+    );
+  }, [currentUserEmail, match, matchEmail, usingFirestore]);
 
   if (!match) {
     return (
@@ -104,6 +123,16 @@ export default function ChatPage() {
       text,
       createdAt: Date.now(),
     };
+
+    if (usingFirestore) {
+      setChatError("");
+      sendFirestoreMessage({ currentUserEmail, matchEmail, matchId: match.id, text }).catch((error) => {
+        console.error("Error sending message:", error);
+        setChatError("Could not send this message to Firebase. Check Firestore rules and config.");
+      });
+      return;
+    }
+
     setDraftMessages((prev) => [...prev, newMsg]);
     if (Math.random() > 0.4) {
       const replies = [
@@ -182,6 +211,17 @@ export default function ChatPage() {
           <span className="bg-blue-600/20 border border-blue-500/40 text-blue-200 text-xs font-semibold px-2 py-0.5 rounded-full">
             {match.score}% match
           </span>
+        </div>
+
+        <div className="px-4 py-2 border-b border-slate-800 bg-slate-900/50 shrink-0">
+          <p className="text-slate-300 text-xs">
+            {usingFirestore ? "Firebase chat sync is on" : "Local demo chat sync is on"}
+          </p>
+          {chatError && (
+            <p role="alert" className="text-red-300 text-xs mt-1">
+              {chatError}
+            </p>
+          )}
         </div>
 
         {match.classes?.length > 0 && (

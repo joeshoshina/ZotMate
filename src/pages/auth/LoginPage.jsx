@@ -5,7 +5,7 @@ import OnboardingLayout from "../../components/common/OnboardingLayout";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 export default function LoginPage() {
-  useDocumentTitle("Sign Up");
+  useDocumentTitle("Sign In");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,8 +35,8 @@ export default function LoginPage() {
     setError("");
     
     try {
-      await registerUser(emailInput, password);
-      navigate("/onboarding/personal-info"); 
+      const result = await registerUser(emailInput, password);
+      navigate(result?.profile ? "/matches" : "/onboarding/personal-info");
     } catch (err) {
       setError(err.message || "Failed to create account. Please try again.");
     } finally {
@@ -56,9 +56,9 @@ export default function LoginPage() {
 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
         <h2 className="text-white font-bold text-xl mb-1">
-          Create Account <span aria-hidden="true">👋</span>
+          Sign In or Create Account <span aria-hidden="true">👋</span>
         </h2>
-        <p className="text-slate-300 text-sm mb-5">Sign up with your email to get started</p>
+        <p className="text-slate-300 text-sm mb-5">Use an existing account or create a new one</p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -111,7 +111,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-3.5 rounded-xl transition-colors text-sm shadow-lg shadow-blue-600/20"
           >
-            {loading ? "Creating Account..." : "Sign Up →"}
+            {loading ? "Continuing..." : "Continue →"}
           </button>
         </form>
       </div>

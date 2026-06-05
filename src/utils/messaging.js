@@ -32,3 +32,10 @@ export function saveStoredMessages(storageKey, messages) {
 
   window.localStorage.setItem(storageKey, JSON.stringify(messages));
 }
+
+export function messageTimestamp(message) {
+  if (typeof message?.createdAt === "number") return message.createdAt;
+  if (typeof message?.clientCreatedAt === "number") return message.clientCreatedAt;
+  if (message?.createdAt?.toMillis) return message.createdAt.toMillis();
+  return Date.now();
+}

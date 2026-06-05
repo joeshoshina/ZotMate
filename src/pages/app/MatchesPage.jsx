@@ -1,25 +1,30 @@
 import AppLayout from "../../components/common/AppLayout";
 import MatchCard from "../../components/match/MatchCard";
 import WeeklyMatchLockedCard from "../../components/match/WeeklyMatchLockedCard";
-import { MOCK_MATCHES, WEEKLY_FEATURED_MATCH_ID } from "../../data/mockData";
+import { getVisibleMatchesForEmail, WEEKLY_FEATURED_MATCH_ID } from "../../data/mockData";
+import { useAuth } from "../../context/AuthContext";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { useMatchReveal } from "../../hooks/useMatchReveal";
+import { getParticipantEmail } from "../../utils/messaging";
 
 export default function MatchesPage() {
   useDocumentTitle("Matches");
   const [revealed, reveal] = useMatchReveal();
+  const { user, profile } = useAuth();
+  const currentUserEmail = getParticipantEmail(user, profile);
+  const matches = getVisibleMatchesForEmail(currentUserEmail);
 
   return (
     <AppLayout>
       <div className="pt-8 pb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-white">Your Matches</h1>
         <p className="text-slate-300 text-sm mt-1">
-          {MOCK_MATCHES.length} connections this quarter
+          {matches.length} connections this quarter
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {MOCK_MATCHES.map((match) =>
+        {matches.map((match) =>
           match.id === WEEKLY_FEATURED_MATCH_ID && !revealed ? (
             <WeeklyMatchLockedCard key={match.id} onReveal={reveal} className="md:col-span-2" />
           ) : (
@@ -28,7 +33,7 @@ export default function MatchesPage() {
         )}
       </div>
 
-      {MOCK_MATCHES.length === 0 && (
+      {matches.length === 0 && (
         <div className="text-center py-20">
           <div className="text-5xl mb-4" aria-hidden="true">🐜</div>
           <p className="text-white font-semibold">No matches yet</p>

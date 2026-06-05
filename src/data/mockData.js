@@ -61,6 +61,77 @@ export const MOCK_MATCHES = [
   },
 ];
 
+export const DEMO_ACCOUNT_MATCH = {
+  id: "demo-account",
+  email: "demo.anteater@uci.edu",
+  name: "Demo Anteater",
+  major: "Informatics",
+  year: "Junior",
+  interests: ["Coding", "Coffee", "Study Groups", "Hackathons"],
+  classes: ["IN4MATX 124", "CS 161", "STATS 120"],
+  score: 92,
+  avatar: null,
+  initials: "DA",
+  bio: "Demo account for testing two-sided ZotMate messaging.",
+  matchedOn: new Date(Date.now() - 24 * 60 * 60 * 1000),
+};
+
+export function getVisibleMatchesForEmail(email) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const isHardcodedMatch = MOCK_MATCHES.some((match) => match.email === normalizedEmail);
+
+  if (!isHardcodedMatch) return MOCK_MATCHES;
+
+  return [
+    DEMO_ACCOUNT_MATCH,
+    ...MOCK_MATCHES.filter((match) => match.email !== normalizedEmail),
+  ];
+}
+
+export function getMatchByIdForEmail(id, email) {
+  return getVisibleMatchesForEmail(email).find((match) => match.id === id);
+}
+
+export function getDemoProfileForEmail(email) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+
+  if (normalizedEmail === DEMO_ACCOUNT_MATCH.email) {
+    return {
+      uid: `demo-${normalizedEmail}`,
+      firstName: "Demo",
+      lastName: "Anteater",
+      schoolEmail: DEMO_ACCOUNT_MATCH.email,
+      schoolYear: DEMO_ACCOUNT_MATCH.year,
+      major: DEMO_ACCOUNT_MATCH.major,
+      majorId: "fallback-informatics",
+      classes: DEMO_ACCOUNT_MATCH.classes.map((code) => ({ id: code, code, title: "Demo Course" })),
+      interests: DEMO_ACCOUNT_MATCH.interests,
+      iAm: "Student",
+      lookingFor: "Study partners",
+      isOnboarded: true,
+    };
+  }
+
+  const match = MOCK_MATCHES.find((item) => item.email === normalizedEmail);
+  if (!match) return null;
+
+  const [firstName, ...lastParts] = match.name.split(" ");
+  return {
+    uid: `demo-${normalizedEmail}`,
+    firstName,
+    lastName: lastParts.join(" ") || "Student",
+    schoolEmail: match.email,
+    schoolYear: match.year,
+    major: match.major,
+    majorId: `fallback-${match.major.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+    classes: match.classes.map((code) => ({ id: code, code, title: "Demo Course" })),
+    interests: match.interests,
+    iAm: "Student",
+    lookingFor: "Study partners",
+    isOnboarded: true,
+  };
+}
+
 /** Current round's featured match (first in `MOCK_MATCHES`); identity stays hidden until Reveal. */
 export const WEEKLY_FEATURED_MATCH_ID = MOCK_MATCHES[0]?.id ?? null;
 
