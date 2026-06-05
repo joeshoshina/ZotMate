@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import ProgressBar from "../../components/common/ProgressBar";
 import OnboardingLayout from "../../components/common/OnboardingLayout";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import { useAuth } from "../../context/AuthContext";
 
-import { auth } from "../../firebase/config"; 
+import { auth, isFirebaseReady } from "../../firebase/config"; 
 import { sendEmailVerification } from "firebase/auth";
 
 export default function VerifyEmailPage() {
@@ -13,13 +14,20 @@ export default function VerifyEmailPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [isChecking, setIsChecking] = useState(false);
+  const { user } = useAuth();
   
   // Grab the currently logged-in user
-  const currentUser = auth.currentUser;
+  const currentUser = isFirebaseReady() ? auth.currentUser : user;
 
   const handleSend = async () => {
     try {
       if (!currentUser) throw new Error("Authentication error: No user found.");
+
+      if (!isFirebaseReady()) {
+        setSent(true);
+        setError("");
+        return;
+      }
 
       await sendEmailVerification(currentUser);
       
@@ -41,6 +49,11 @@ export default function VerifyEmailPage() {
     setError("");
 
     try {
+      if (!isFirebaseReady()) {
+        navigate("/onboarding/classes");
+        return;
+      }
+
       // 1. Force Firebase to fetch the newest data from the server
       await currentUser.reload();
       

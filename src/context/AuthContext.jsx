@@ -1,5 +1,5 @@
 // src/context/AuthContext.jsx
-import { db, auth } from "../firebase/config.js"; // Added auth here
+import { db, auth, isFirebaseReady } from "../firebase/config.js"; // Added auth here
 import { doc, setDoc } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth"; // Added Firebase Auth import
 import { createContext, useContext, useState } from "react";
@@ -12,6 +12,17 @@ export function AuthProvider({ children }) {
 
   const registerUser = async (email, password) => {
     try {
+      if (!isFirebaseReady()) {
+        const mockUser = {
+          uid: `demo-${email}`,
+          email,
+          emailVerified: true,
+          isDemoUser: true,
+        };
+        setUser(mockUser);
+        return mockUser;
+      }
+
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const newUser = userCredential.user;
 
@@ -49,17 +60,20 @@ export function AuthProvider({ children }) {
 
       // Use the REAL secure Firebase ID!
       const userId = user.uid; 
-      const userRef = doc(db, "users", userId);
 
       // Group all the data together
       const fullProfileData = {
         ...onboardingData,
+        schoolEmail: onboardingData.schoolEmail || user.email,
         isOnboarded: true,
         updatedAt: new Date().toISOString(),
       };
 
-      // 1. Save it to the cloud database
-      await setDoc(userRef, fullProfileData, { merge: true });
+      // 1. Save it to the cloud database when Firebase is configured
+      if (isFirebaseReady()) {
+        const userRef = doc(db, "users", userId);
+        await setDoc(userRef, fullProfileData, { merge: true });
+      }
 
       // 2. THE MISSING LINK: Instantly update React's local memory!
       // This tells the ProtectedRoute bouncer that you are fully onboarded.
