@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import MessageList from "../../components/chat/MessageList";
@@ -51,7 +51,23 @@ export default function ChatPage() {
     () => (storageKey && !usingFirestore ? loadStoredMessages(storageKey, seededMessages) : []),
     [seededMessages, storageKey, usingFirestore]
   );
-  const [draftMessages, setDraftMessages] = useState(initialMessages);
+  const [conversationState, setConversationState] = useState(() => ({
+    messages: initialMessages,
+    storageKey,
+  }));
+  const draftMessages = conversationState.storageKey === storageKey ? conversationState.messages : initialMessages;
+  const setDraftMessages = useCallback(
+    (nextMessages) => {
+      setConversationState((prev) => {
+        const currentMessages = prev.storageKey === storageKey ? prev.messages : initialMessages;
+        return {
+          messages: typeof nextMessages === "function" ? nextMessages(currentMessages) : nextMessages,
+          storageKey,
+        };
+      });
+    },
+    [initialMessages, storageKey],
+  );
   const { messages } = useMessages(draftMessages);
   useDocumentTitle(
     !match ? "Chat" : match.id === WEEKLY_FEATURED_MATCH_ID && !revealed ? "Match" : `Chat with ${match.name}`
@@ -76,7 +92,7 @@ export default function ChatPage() {
         setChatError("Could not sync this chat from Firebase. Check Firestore rules and config.");
       },
     );
-  }, [currentUserEmail, match, matchEmail, usingFirestore]);
+  }, [currentUserEmail, match, matchEmail, setDraftMessages, usingFirestore]);
 
   if (!match) {
     return (

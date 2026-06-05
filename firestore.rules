@@ -17,9 +17,13 @@ service cloud.firestore {
     }
 
     match /conversations/{conversationId} {
-      allow read: if participant(conversationId);
-      allow create, update: if signedIn()
+      allow read: if signedIn()
+        && request.auth.token.email in resource.data.participantEmails;
+      allow create: if signedIn()
         && request.auth.token.email in request.resource.data.participantEmails;
+      allow update: if signedIn()
+        && request.auth.token.email in resource.data.participantEmails
+        && request.resource.data.participantEmails == resource.data.participantEmails;
       allow delete: if false;
 
       match /messages/{messageId} {
