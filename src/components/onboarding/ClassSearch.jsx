@@ -3,6 +3,46 @@ import { mapCatalogCourse, fetchCourseById, mapFullCourseDetail, searchCoursesFr
 
 const MIN_QUERY_LEN = 2;
 const SEARCH_DEBOUNCE_MS = 280;
+const DEMO_COURSES = [
+  {
+    id: "demo-IN4MATX124",
+    code: "IN4MATX 124",
+    title: "Internet Applications Engineering",
+    description: "Demo course used when the catalog API is unavailable.",
+  },
+  {
+    id: "demo-IN4MATX131",
+    code: "IN4MATX 131",
+    title: "Human Computer Interaction",
+    description: "Demo course used when the catalog API is unavailable.",
+  },
+  {
+    id: "demo-COMPSCI161",
+    code: "COMPSCI 161",
+    title: "Design and Analysis of Algorithms",
+    description: "Demo course used when the catalog API is unavailable.",
+  },
+  {
+    id: "demo-STATS120",
+    code: "STATS 120",
+    title: "Introduction to Probability and Statistics",
+    description: "Demo course used when the catalog API is unavailable.",
+  },
+];
+
+function demoCourseResults(query, deptFilter) {
+  const q = query.trim().toLowerCase();
+  const d = deptFilter.trim().toLowerCase();
+
+  return DEMO_COURSES.filter((course) => {
+    const code = course.code.toLowerCase();
+    const title = course.title.toLowerCase();
+    const compactCode = code.replace(/\s+/g, "");
+    const matchesDept = !d || code.startsWith(d) || compactCode.startsWith(d.replace(/\s+/g, ""));
+    const matchesQuery = !q || code.includes(q) || compactCode.includes(q.replace(/\s+/g, "")) || title.includes(q);
+    return matchesDept && matchesQuery;
+  });
+}
 
 export default function ClassSearch({ selected, onAdd, onRemove }) {
   const [deptFilter, setDeptFilter] = useState("");
@@ -38,15 +78,15 @@ export default function ClassSearch({ selected, onAdd, onRemove }) {
         if (json?.ok === true && Array.isArray(json.data)) {
           setRemoteResults(json.data.map(mapCatalogCourse));
         } else {
-          setRemoteResults([]);
+          setRemoteResults(demoCourseResults(q, d));
           setRemoteError(
-            typeof json?.message === "string" ? json.message : "Could not load courses",
+            "Using local demo courses because the catalog API is unavailable.",
           );
         }
       } catch (e) {
         if (ctrl.signal.aborted || e?.name === "AbortError") return;
-        setRemoteResults([]);
-        setRemoteError("Network error");
+        setRemoteResults(demoCourseResults(q, d));
+        setRemoteError("Using local demo courses because the catalog API is unavailable.");
       } finally {
         if (!ctrl.signal.aborted) setRemoteLoading(false);
       }

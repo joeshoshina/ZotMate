@@ -17,13 +17,13 @@ export default function VerifyEmailPage() {
   const { user } = useAuth();
   
   // Grab the currently logged-in user
-  const currentUser = isFirebaseReady() ? auth.currentUser : user;
+  const currentUser = isFirebaseReady() && auth ? auth.currentUser : user;
 
   const handleSend = async () => {
     try {
       if (!currentUser) throw new Error("Authentication error: No user found.");
 
-      if (!isFirebaseReady()) {
+      if (!isFirebaseReady() || !auth) {
         setSent(true);
         setError("");
         return;
@@ -49,7 +49,7 @@ export default function VerifyEmailPage() {
     setError("");
 
     try {
-      if (!isFirebaseReady()) {
+      if (!isFirebaseReady() || !auth) {
         navigate("/onboarding/classes");
         return;
       }

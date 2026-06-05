@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
 
   const registerUser = async (email, password) => {
     try {
-      if (!isFirebaseReady()) {
+      if (!isFirebaseReady() || !auth) {
         const mockUser = {
           uid: `demo-${email}`,
           email,
@@ -70,7 +70,7 @@ export function AuthProvider({ children }) {
       };
 
       // 1. Save it to the cloud database when Firebase is configured
-      if (isFirebaseReady()) {
+      if (isFirebaseReady() && db) {
         const userRef = doc(db, "users", userId);
         await setDoc(userRef, fullProfileData, { merge: true });
       }
