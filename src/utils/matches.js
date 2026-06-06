@@ -47,6 +47,12 @@ export function computeLiveMatchDetails(currentUserData, otherUserData, fallback
   };
 }
 
+/** Build a chat route without accidental whitespace in the id segment. */
+export function matchChatPath(matchId) {
+  const id = String(matchId ?? "").trim();
+  return id ? `/matches/${id}` : "/matches";
+}
+
 export function mapMatchCard(matchDocId, matchData, currentUserData, otherUserData) {
   const user = otherUserData || FALLBACK_USER;
   const live = computeLiveMatchDetails(
@@ -56,7 +62,7 @@ export function mapMatchCard(matchDocId, matchData, currentUserData, otherUserDa
   );
 
   return {
-    id: matchDocId,
+    id: String(matchDocId).trim(),
     name: `${user.firstName || "Your"} ${user.lastName || "Match"}`.trim(),
     major: user.major || "UCI",
     year: user.schoolYear || "Student",

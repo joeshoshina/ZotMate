@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { matchChatPath } from "../../utils/matches";
 
 function ScoreBadge({ score }) {
   const color =
@@ -21,7 +22,7 @@ export default function MatchCard({ match, compact = false }) {
     return (
       <button
         type="button"
-        onClick={() => navigate(`/matches/${match.id}`)}
+        onClick={() => navigate(matchChatPath(match.id))}
         aria-label={`Open chat with ${match.name}, ${match.score}% match`}
         className="w-full flex items-center gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition-colors text-left"
       >
@@ -116,7 +117,7 @@ export default function MatchCard({ match, compact = false }) {
       <div className="px-5 pb-5">
         <button
           type="button"
-          onClick={() => navigate(`/matches/${match.id}`)}
+          onClick={() => navigate(matchChatPath(match.id))}
           className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
         >
           Send Message →
