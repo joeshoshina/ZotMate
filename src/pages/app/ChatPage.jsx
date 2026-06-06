@@ -13,7 +13,8 @@ import { useLiveMatch } from "../../hooks/useLiveMatch";
 import RouteLoadingScreen from "../../components/common/RouteLoadingScreen";
 
 export default function ChatPage() {
-  const { id } = useParams();
+  const { id: rawId } = useParams();
+  const id = rawId?.trim() ?? "";
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [revealed, reveal] = useMatchReveal();

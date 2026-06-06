@@ -4,7 +4,7 @@ import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAvldTIqdhuPyFNp3B_qw4Y9HZ59Y_7TnI",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "zotmate.firebaseapp.com",
   databaseURL: "https://zotmate-default-rtdb.firebaseio.com",
   projectId: "zotmate",
