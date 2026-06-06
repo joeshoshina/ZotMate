@@ -61,12 +61,19 @@ export default function LoginPage() {
       const { profile: existingProfile } = await signInUser(emailInput, password);
       navigate(existingProfile ? "/home" : "/onboarding/personal-info");
     } catch (err) {
-      if (err.code === "auth/user-not-found") {
+      const canCreateAccount =
+        err.code === "auth/user-not-found" || err.code === "auth/invalid-credential";
+
+      if (canCreateAccount) {
         try {
           await registerUser(emailInput, password);
           navigate("/onboarding/personal-info");
         } catch (regErr) {
-          setError(authErrorMessage(regErr));
+          if (regErr.code === "auth/email-already-in-use") {
+            setError("Incorrect email or password.");
+          } else {
+            setError(authErrorMessage(regErr));
+          }
         }
       } else {
         setError(authErrorMessage(err));
